@@ -22,7 +22,11 @@ Aquivos importantes:
 
 - **Nome/ID da equipe:** `<preencha>`
 - **Integrantes:**
-  - `<nome — e-mail>`
-  - `<nome — e-mail>`
-  - `<nome — e-mail>`
-  - `<nome — e-mail>`
+- `Adriane Ribeiro — ribeiro.adriane1970@gmail.com>`
+- `Ana Crosatto Thomsen — ana.crosatto.thomsen@gmail.com>`
+- `André Guimarães — andre.evguimaraes@terra.com.br>`
+- `Lucas Oliveira — lucasfellipe8888@gmail.com>`
+- `Tomas Silva — tomas.jeferson94@gmail.com>`
+ 
+  
+  
