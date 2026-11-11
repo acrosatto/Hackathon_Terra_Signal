@@ -20,13 +20,10 @@ Aquivos importantes:
 
 > Preencha antes de começar (edite este bloco no seu fork), depois faça commit + push.
 
-- **Nome/ID da equipe:** `<preencha>`
+- **Nome/ID da equipe:** 
 - **Integrantes:**
 - `Adriane Ribeiro — ribeiro.adriane1970@gmail.com>`
 - `Ana Crosatto Thomsen — ana.crosatto.thomsen@gmail.com>`
 - `André Guimarães — andre.evguimaraes@terra.com.br>`
 - `Lucas Oliveira — lucasfellipe8888@gmail.com>`
 - `Tomas Silva — tomas.jeferson94@gmail.com>`
- 
-  
-  
