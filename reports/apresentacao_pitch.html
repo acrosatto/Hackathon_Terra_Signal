@@ -54,7 +54,7 @@ body { margin: 0; background: var(--black); color: var(--ink); font-family: var(
 .f.in { opacity: 1; transform: none; filter: none; }
 
 /* vidro */
-.mot, .myth, .layer, .led, .srow, .stat9, .tile, .kpi, .endc, .chip, .note8, .strip, table.t, .callout, .offer, .calc, .glass {
+.qc, .mot, .myth, .layer, .led, .srow, .stat9, .tile, .kpi, .endc, .chip, .note8, .strip, table.t, .callout, .offer, .calc, .glass {
   background: var(--glass); -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%);
   border: 0; box-shadow: var(--glass-edge); border-radius: 30px; }
 .callout, .offer, .calc, .mot.lead, .layer.pro, .endc.lead, .led.key { background: var(--tint); }
@@ -145,6 +145,22 @@ body { margin: 0; background: var(--black); color: var(--ink); font-family: var(
 .led .v.g { color: var(--gain); } .led .v.r { color: var(--loss); }
 .led p { margin: 6px 0 0; font-size: 20px; color: rgba(245,245,247,.78); line-height: 1.4; }
 .led.key p { color: var(--ink); font-size: 22px; }
+
+/* slide 7: quatro tipos */
+.quad { display: grid; grid-template-columns: 190px 1fr 1fr; grid-template-rows: auto 1fr 1fr; gap: 16px 22px; flex: 1; min-height: 0; }
+.quad .ch { font: 600 20px var(--body); color: var(--muted); align-self: end; padding-left: 6px; }
+.quad .ch b, .quad .rh b { color: var(--ink); font-weight: 600; }
+.quad .rh { font: 600 20px/1.3 var(--body); color: var(--muted); align-self: center; }
+.qc { padding: 22px 28px; display: flex; flex-direction: column; gap: 8px; }
+.qc .t { font: 600 34px var(--display); letter-spacing: -.02em; color: var(--ink); }
+.qc p { margin: 0; font-size: 20px; line-height: 1.38; color: rgba(245,245,247,.82); }
+.qc .eff { font: 600 20px var(--body); }
+.qc .eff.g { color: var(--gain); } .qc .eff.r { color: var(--loss); } .qc .eff.m { color: var(--muted); }
+.qc .pct { margin-top: auto; align-self: flex-start; font: 600 16px var(--body); color: var(--ink); background: rgba(255,255,255,.10); box-shadow: inset 0 1px 0 rgba(255,255,255,.18); border-radius: 999px; padding: 6px 14px; font-variant-numeric: tabular-nums; }
+.qc.win { background: radial-gradient(130% 70% at 12% 0%, rgba(255,255,255,.22), rgba(255,255,255,0) 55%), linear-gradient(150deg, rgba(48,209,88,.34), rgba(48,209,88,.10)); }
+.qc.dog { background: radial-gradient(130% 70% at 12% 0%, rgba(255,255,255,.20), rgba(255,255,255,0) 55%), linear-gradient(150deg, rgba(255,69,58,.36), rgba(255,69,58,.10)); }
+.qc.d1 { transition-delay: .15s; } .qc.d2 { transition-delay: .3s; } .qc.d3 { transition-delay: .45s; }
+.strip.q { margin-top: 18px; font-size: 21px; padding: 18px 26px; }
 
 /* slide 8: 100 clientes */
 #dots circle { transition: fill .6s ease, opacity .6s ease, stroke-width .4s ease; }
@@ -441,6 +457,40 @@ table.t td.n { text-align: right; }
   </aside>
 </section>
 
+<!-- 7 · QUATRO TIPOS -->
+<section class="slide" id="tipos" data-steps="2">
+  <span class="kicker">A métrica</span>
+  <h2>Quatro tipos de cliente, e a ligação só salva um</h2>
+  <div class="body" style="display:flex;flex-direction:column">
+    <div class="quad">
+      <div></div>
+      <div class="ch">Se a TS liga, ele <b>fica</b></div>
+      <div class="ch">Se a TS liga, ele <b>sai</b></div>
+      <div class="rh">Sem ligação, <b>sairia</b></div>
+      <div class="qc win f" data-s="1"><div class="t">Persuadível</div><p>Ia sair, mas a ligação faz ficar.</p><div class="eff g">A ligação salva a receita</div><span class="pct">Δa: 20% de quem sairia</span></div>
+      <div class="qc f d1" data-s="1"><div class="t">Causa perdida</div><p>Sai de qualquer jeito.</p><div class="eff m">Perde os R$ 10 da ligação</div><span class="pct">80% de quem sairia</span></div>
+      <div class="rh">Sem ligação, <b>ficaria</b></div>
+      <div class="qc f d2" data-s="1"><div class="t">Garantido</div><p>Fica de qualquer jeito.</p><div class="eff m">Perde a ligação e, se aceitar, a oferta</div><span class="pct">99% de quem ficaria</span></div>
+      <div class="qc dog f d3" data-s="1"><div class="t">Cão adormecido</div><p>Tinha esquecido da assinatura. A ligação lembra, e ele cancela.</p><div class="eff r">Perde o cliente</div><span class="pct">w: 1% de quem ficaria</span></div>
+    </div>
+    <div class="strip q f" data-s="2">O modelo separa as linhas: quem sai e quem fica. Separar dentro delas exige saber o que acontece <b>com e sem ligação</b>, e a TS não tem esse histórico. Por isso Δa e w entram como premissa, e o piloto A/B mede.</div>
+  </div>
+  <span class="num">7</span>
+  <span class="foot">Percentuais do cenário base. São premissas, não medidas.</span>
+  <aside class="notes" data-who="André" data-time="0:50">
+    <ul>
+      <li>"Quem vai sair" esconde quatro tipos de cliente. O tipo depende do que acontece <b>com e sem</b> a ligação.</li>
+      <li>[Clique] <b>Persuadível:</b> ia sair, mas a ligação segura. É o único tipo em que ligar dá lucro.</li>
+      <li><b>Causa perdida:</b> sai de qualquer jeito. A ligação só gasta R$ 10.</li>
+      <li><b>Garantido:</b> fica de qualquer jeito. Gasta a ligação e, se aceitar, o suporte grátis de que nem precisava.</li>
+      <li><b>Cão adormecido:</b> o cliente que tinha esquecido da assinatura. A ligação lembra, e ele cancela. É o pior erro.</li>
+      <li>[Clique] O modelo separa a linha de cima da de baixo: quem sai e quem fica. Para separar dentro das linhas, precisaríamos de histórico com e sem ligação, e a TS não tem.</li>
+      <li>Por isso as taxas entram como premissa: no cenário base, 20% de quem sairia é persuadível (Δa) e 1% de quem ficaria é cão adormecido (w). O piloto A/B mede os números reais.</li>
+    </ul>
+    <p class="trans">Transição: "Colocando preço em cada tipo, o acerto e o erro ficam assim."</p>
+  </aside>
+</section>
+
 <!-- 7 · BALANÇA -->
 <section class="slide" id="balanca" data-steps="3">
   <span class="kicker">A métrica</span>
@@ -459,7 +509,7 @@ table.t td.n { text-align: right; }
       <div class="led key f" data-s="3"><p><b>Um acerto paga 4,5 erros.</b> E o pior erro é o "cão adormecido": o cliente que tinha esquecido da assinatura, recebe a ligação e cancela.</p></div>
     </div>
   </div>
-  <span class="num">7</span>
+  <span class="num">8</span>
   <span class="foot">Valores esperados por cliente abordado, cenário base.</span>
   <aside class="notes" data-who="André" data-time="1:00">
     <ul>
@@ -467,7 +517,7 @@ table.t td.n { text-align: right; }
       <li>[Clique] Ligar para quem ia sair vale <b>+R$ 157</b> em média: em 20% dos casos salvamos R$ 835 de receita anual.</li>
       <li>[Clique] Ligar para quem ia ficar custa <b>R$ 35</b>: a ligação, a oferta que a pessoa aceita sem precisar e o risco de "acordar" o cliente. Os pesos caem na balança um a um.</li>
       <li>[Clique] A balança equilibra com 4,5 erros. Ou seja, <b>vale ligar mesmo com bastante chance de errar</b>, desde que o cliente valha a pena.</li>
-      <li>"Cão adormecido": o cliente que nem lembrava da assinatura e cancela porque a gente ligou. Esse risco é o motivo de não ligar para todo mundo.</li>
+      <li>Os R$ 7 de risco são o cão adormecido do slide anterior. Esse risco é o motivo de não ligar para todo mundo.</li>
     </ul>
     <p class="trans">Transição: "Vamos ver isso com clientes de verdade."</p>
   </aside>
@@ -489,7 +539,7 @@ table.t td.n { text-align: right; }
       <div class="srow best f" data-s="4" id="r-modelo"><span class="n1">Modelo: lucro positivo</span><span class="money" id="m-modelo">R$ 0</span><span class="det">45 ligações · 22 churners alcançados</span></div>
     </div>
   </div>
-  <span class="num">8</span>
+  <span class="num">9</span>
   <span class="foot">Amostra de 100 clientes do histórico com as mesmas proporções da base. Lucro em 12 meses, cenário base, com o churn observado.</span>
   <aside class="notes" data-who="André" data-time="1:40">
     <ul>
@@ -522,7 +572,7 @@ table.t td.n { text-align: right; }
       <div class="stat9 f" data-s="2"><div class="v" style="font-size:40px;color:var(--muted)">297</div><p>ligações com um corte fixo de 0,5: deixaria de fora clientes de mensalidade alta que valem a ligação</p></div>
     </div>
   </div>
-  <span class="num">9</span>
+  <span class="num">10</span>
   <span class="foot">Cada ponto é um cliente do inference.csv. Liga-se quando p × 20% × (V − R$ 60) supera os custos de errar, com V = 12 × mensalidade.</span>
   <aside class="notes" data-who="André" data-time="1:10">
     <ul>
@@ -548,7 +598,7 @@ table.t td.n { text-align: right; }
       <div class="stat9 f" data-s="3"><p style="margin:0 0 6px">Com 250 ligações</p><div class="v" style="color:var(--gain)">+68%</div><p>churners: 212 pelo modelo contra 126 pelo gestor</p></div>
     </div>
   </div>
-  <span class="num">10</span>
+  <span class="num">11</span>
   <span class="foot">history.csv, probabilidades fora da amostra (cada cliente pontuado por um modelo que não o viu). A regra não ordena dentro do grupo, então uma lista menor é um sorteio dentro dele.</span>
   <aside class="notes" data-who="Adriane" data-time="1:00">
     <ul>
@@ -577,7 +627,7 @@ table.t td.n { text-align: right; }
       <div class="stat9 f" data-s="2"><p style="margin:0 0 6px">No cenário pessimista</p><div class="v" style="color:var(--gain)">+69%</div><p>sobre o gestor. E ligar para todos <b style="color:var(--loss)">perde R$ 96 mil</b>.</p></div>
     </div>
   </div>
-  <span class="num">11</span>
+  <span class="num">12</span>
   <span class="foot">Lucro em 12 meses sobre os 5.633 clientes do history, em receita, com o churn observado e probabilidades fora da amostra.</span>
   <aside class="notes" data-who="Adriane" data-time="0:50">
     <ul>
@@ -600,7 +650,7 @@ table.t td.n { text-align: right; }
     <div class="tile"><span class="t">Explicável</span><span class="v">× 4,8</span><p>Até 5 meses de casa multiplica a chance de sair por 4,8. Contrato de dois anos divide por quase 4. Suporte técnico reduz 30%.</p></div>
     <div class="tile f" data-s="1"><span class="t">Avaliado sem atalho</span><span class="v">Fora da amostra</span><p>Cada cliente é avaliado por um modelo que não o viu no treino. Sem o feedback que vaza a resposta.</p></div>
   </div>
-  <span class="num">12</span>
+  <span class="num">13</span>
   <aside class="notes" data-who="Adriane" data-time="0:50">
     <ul>
       <li>Testamos regressão logística, boosting e árvore com validação cruzada aninhada. A logística empatou com o boosting.</li>
@@ -625,7 +675,7 @@ table.t td.n { text-align: right; }
     </div>
     <div class="strip f" data-s="1">A lista tem 45% dos clientes, mas concentra <b>83% dos churners esperados</b>. Na base inteira, isso equivale a cerca de <b>R$ 29 mil de lucro por mil clientes por ano</b>.</div>
   </div>
-  <span class="num">13</span>
+  <span class="num">14</span>
   <span class="foot">Cenário base. Clientes do inference.csv. O lucro escala com o tamanho da base ativa da TS.</span>
   <aside class="notes" data-who="Adriane" data-time="0:40">
     <ul>
@@ -659,7 +709,7 @@ table.t td.n { text-align: right; }
       <p>Exemplo com os valores esperados do cenário base. Com os resultados reais, a mesma conta diz se a TS amplia, para ou aumenta o piloto.</p>
     </div>
   </div>
-  <span class="num">14</span>
+  <span class="num">15</span>
   <span class="foot">Grupos comparados inteiros, inclusive quem recusou a oferta. Alerta aos 90 dias, decisão aos 12 meses. Tamanho para 80% de poder.</span>
   <aside class="notes" data-who="Adriane" data-time="1:00">
     <ul>
@@ -684,17 +734,17 @@ table.t td.n { text-align: right; }
       <div class="endc"><span class="t">Custo</span><span class="v">45%</span><p>da base recebe ligação. Um atendente a cada 525 ligações por mês.</p></div>
       <div class="endc"><span class="t">Risco</span><span class="v">R$ 96 mil</span><p>de prejuízo evitado no pior cenário. E piloto com grupo de controle antes de escalar.</p></div>
     </div>
-    <div class="next f" data-s="1"><em>Próximos passos</em><span>Piloto A/B</span><em>→</em><span>Ajustar o corte com as taxas medidas</span><em>→</em><span>Modelo de uplift: quem a ligação salva</span></div>
+    <div class="next f" data-s="1"><em>Próximos passos</em><span>Piloto A/B</span><em>→</em><span>Ajustar o corte com as taxas medidas</span><em>→</em><span>Modelo de uplift: achar os persuadíveis</span></div>
     <div class="quote f" data-s="1">Acurácia mede se o modelo acerta.<br>Lucro mede se a ligação se paga.</div>
   </div>
-  <span class="num">15</span>
+  <span class="num">16</span>
   <span class="foot">Premissas: churn em 12 meses, valores em receita, R$ 10 por ligação, oferta de até R$ 60. Detalhes no apêndice e nos notebooks 03 a 12.</span>
   <aside class="notes" data-who="Adriane" data-time="0:40">
     <ul>
       <li><b>Receita:</b> cerca de R$ 29 mil de lucro por mil clientes por ano, 19% acima de um bom gestor.</li>
       <li><b>Custo:</b> a TS liga para menos da metade da base, com um time pequeno e dimensionado.</li>
       <li><b>Risco:</b> se a ação funcionar pior do que o esperado, o modelo evita o prejuízo de ligar para todos, e o piloto mede antes de escalar.</li>
-      <li>[Clique] Próximos passos: piloto, ajustar o corte com as taxas reais e, com esses dados, um modelo de uplift que estima diretamente quem a ligação salva.</li>
+      <li>[Clique] Próximos passos: piloto, ajustar o corte com as taxas reais e, com esses dados, um modelo de uplift que estima diretamente quem a ligação salva: os persuadíveis.</li>
       <li>Fechar com a frase: "Acurácia mede se o modelo acerta. <b>Lucro mede se a ligação se paga.</b> Obrigado."</li>
     </ul>
   </aside>
@@ -804,20 +854,20 @@ table.t td.n { text-align: right; }
         <li><b>→</b>, espaço ou clique: próxima animação ou próximo slide. <b>←</b>: volta.</li>
         <li><b>N</b>: mostra as notas do slide atual (só na sua tela). <b>R</b>: abre este roteiro. <b>F</b>: tela cheia.</li>
         <li>Onde a nota diz <b>[Clique]</b>, avance uma vez para disparar a próxima animação.</li>
-        <li>No slide 9, os botões de cenário podem ser clicados ao vivo.</li>
-        <li>Os slides A a D são reserva para perguntas. A apresentação termina no slide 15.</li>
+        <li>No slide 10, os botões de cenário podem ser clicados ao vivo.</li>
+        <li>Os slides A a D são reserva para perguntas. A apresentação termina no slide 16.</li>
       </ul>
     </div>
     <div class="card">
-      <h3>Divisão sugerida (cerca de 14 minutos)</h3>
+      <h3>Divisão sugerida (cerca de 14 minutos e meio)</h3>
       <div class="tbl"><table>
         <thead><tr><th>Quem</th><th>Slides</th><th>Tempo</th><th>Bloco</th></tr></thead>
         <tbody>
           <tr><td>Ana</td><td>1 a 5</td><td>4:00</td><td>Problema, a pergunta certa e o que os dados mostram</td></tr>
-          <tr><td>André</td><td>6 a 9</td><td>4:40</td><td>Estratégia, métrica de lucro, os 100 clientes e a regra de decisão</td></tr>
-          <tr><td>Adriane</td><td>10 a 15</td><td>5:00</td><td>Modelo contra o gestor, em reais, confiança, operação, piloto e fechamento</td></tr>
+          <tr><td>André</td><td>6 a 10</td><td>5:30</td><td>Estratégia, os quatro tipos de cliente, métrica de lucro, os 100 clientes e a regra de decisão</td></tr>
+          <tr><td>Adriane</td><td>11 a 16</td><td>5:00</td><td>Modelo contra o gestor, em reais, confiança, operação, piloto e fechamento</td></tr>
         </tbody></table></div>
-      <p class="trans">Sobra cerca de 1 minuto de folga para os 15 minutos.</p>
+      <p class="trans">Sobram cerca de 30 segundos de folga para os 15 minutos.</p>
     </div>
     <div id="rotSlides" style="display:grid;gap:16px"></div>
     <h2>Perguntas prováveis da banca</h2>
@@ -833,11 +883,14 @@ table.t td.n { text-align: right; }
       <details><summary>Um piloto com 441 clientes por grupo não é pequeno?</summary><p>É o tamanho necessário para detectar, com 80% de poder, o efeito esperado no cenário base (queda de 49,2% para 39,9%). Se o efeito real for menor, a calculadora vai dizer "inconclusivo: ampliar o piloto", e não "funciona". No cenário pessimista seriam 1.507 por grupo.</p></details>
       <details><summary>Por que oferecer contrato anual com suporte grátis, e não desconto?</summary><p>Porque ataca as duas causas mais fortes: contrato mensal e falta de suporte (72% dos churners). O preço segue uma tabela exata, então não existe "conta alta" para corrigir com desconto. E o suporte custa no máximo R$ 60 por cliente em 12 meses.</p></details>
       <details><summary>E se a TS não tiver equipe de retenção?</summary><p>A conta já dimensiona: 634 ligações no inference cabem em 2 atendentes por um mês, a cerca de 525 ligações por atendente. O time cresce na proporção da base.</p></details>
+      <details><summary>Por que não modelam direto quem a ligação salva (os persuadíveis)?</summary><p>Porque isso exige saber o que acontece com e sem ligação para clientes parecidos, e a TS nunca fez retenção. O history só mostra quem saiu. O piloto A/B gera exatamente esse dado. Com ele, o próximo passo é um modelo de uplift, que separa persuadíveis de causas perdidas, garantidos e cães adormecidos.</p></details>
       <details><summary>O churn é de quanto tempo?</summary><p>A TS não soube informar. Adotamos 12 meses como premissa, coerente com o valor do cliente (12 mensalidades) e com o contrato anual da oferta.</p></details>
     </div>
     <h2>Glossário rápido</h2>
     <div class="card"><ul>
       <li><b>Lucro incremental:</b> o que a ligação gera a mais do que não ligar.</li>
+      <li><b>Persuadível:</b> o cliente que ia sair e fica porque recebeu a ligação. É o único que gera lucro.</li>
+      <li><b>Causa perdida:</b> sai com ou sem ligação. <b>Garantido:</b> fica com ou sem ligação.</li>
       <li><b>Cão adormecido:</b> o cliente que ia ficar e cancela porque foi lembrado da assinatura.</li>
       <li><b>Δa:</b> fração dos churners abordados que a ligação salva. <b>w:</b> fração dos não churners que a ligação "acorda".</li>
       <li><b>Calibrado:</b> a probabilidade do modelo corresponde à taxa real (30% de risco ≈ 30% saem).</li>
