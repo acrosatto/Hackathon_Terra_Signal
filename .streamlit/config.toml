@@ -1,0 +1,12 @@
+[theme]
+base = "dark"
+primaryColor = "#5A7A8C"
+backgroundColor = "#0E1E28"
+secondaryBackgroundColor = "#1B3139"
+textColor = "#EEEDE9"
+
+[client]
+toolbarMode = "minimal"
+
+[ui]
+hideTopBar = true
