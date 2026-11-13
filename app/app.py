@@ -167,6 +167,11 @@ st.markdown("""
         width: 100%;
     }
 
+        .terra-metric-card-sm {
+        padding: 8px 16px;
+        height: 70px;
+    }
+
     .terra-metric-label {
         font-size: 0.85rem;
         font-weight: 500;
@@ -526,27 +531,25 @@ st.markdown("""
 @st.cache_data
 def load_data():
 
+    # === CSV NOVO (modelo logístico calibrado) ===
     scores = pd.read_csv(
-        DATA_DIR / "terra_signal_churn_scores.csv",
-        sep=";",
-        encoding="utf-8-sig",     # ← SEM decimal=","
+        DATA_DIR / "terra_signal_lucro.csv",
+        sep=",",
+        encoding="utf-8-sig",
     )
+
+    # === CSVs antigos (sentimento, aspectos, etc.) ===
     intelligence = pd.read_csv(
         DATA_DIR / "terra_signal_customer_intelligence.csv",
-        sep=";",
-        decimal=",",
-        encoding="latin-1",
+        sep=";", decimal=",", encoding="latin-1",
     )
     aspects = pd.read_csv(
         DATA_DIR / "terra_signal_feedback_aspects.csv",
-        sep=";",
-        encoding="latin-1",
+        sep=";", encoding="latin-1",
     )
     feedback = pd.read_csv(
         DATA_DIR / "terra_signal_feedback_text.csv",
-        sep=";",
-        decimal=",",
-        encoding="latin-1",
+        sep=";", decimal=",", encoding="latin-1",
     )
 
     def _limpar_bom(df, nome_arquivo):
@@ -565,40 +568,26 @@ def load_data():
             )
         return df
 
-    scores       = _limpar_bom(scores,       "terra_signal_churn_scores.csv")
+    scores       = _limpar_bom(scores,       "terra_signal_lucro.csv")
     intelligence = _limpar_bom(intelligence, "terra_signal_customer_intelligence.csv")
     aspects      = _limpar_bom(aspects,      "terra_signal_feedback_aspects.csv")
     feedback     = _limpar_bom(feedback,     "terra_signal_feedback_text.csv")
 
-    def _to_float_br(series):
-        s = series.astype(str).str.strip()
-        sample = s.dropna().head(100).tolist()
-        has_comma = sum("," in x for x in sample) > (len(sample) / 2)
-        if has_comma:
-            s = s.str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
-        else:
-            s = s.str.replace(",", "", regex=False)
-        return pd.to_numeric(s, errors="coerce").astype(float)
+    # garante ID como string
+    for df in [scores, intelligence, aspects, feedback]:
+        df["customerID"] = df["customerID"].astype(str).str.strip()
 
-    scores["ChurnScore_"] = _to_float_br(scores["ChurnScore_"])
-    scores["Threshold"]   = _to_float_br(scores["Threshold"])
+    # === aliases: ChurnScore_ / ChurnPredicted__ (compatibilidade) ===
+    scores["ChurnScore_"]      = pd.to_numeric(scores["ChurnScore"], errors="coerce")
+    scores["ChurnPredicted__"] = scores["ChurnPredicted"]
+    scores["LucroEsperado"]    = pd.to_numeric(scores["LucroEsperado"], errors="coerce")
+    scores["Ligar"]            = scores["Ligar"].fillna("—")
 
-    scores["ChurnPredicted__"] = np.where(
-        scores["ChurnScore_"] > scores["Threshold"], "Yes", "No"
-    )
-
-    # --- aliases DEPOIS do fix (pra ficarem consistentes) ---
-    scores["ChurnScore"]     = scores["ChurnScore_"]
-    scores["ChurnPredicted"] = scores["ChurnPredicted__"]
-
-    # --- FIX 2: SentimentScore correto vindo do feedback.csv ---
+    # === FIX 2: SentimentScore do feedback ===
     feedback["SentimentScore"] = pd.to_numeric(
         feedback["SentimentScore"].astype(str).str.strip().str.replace(",", ".", regex=False),
         errors="coerce",
     )
-    feedback["customerID"] = feedback["customerID"].astype(str).str.strip()
-    scores["customerID"]   = scores["customerID"].astype(str).str.strip()
-
     feedback_score = (
         feedback
         .dropna(subset=["customerID"])
@@ -612,23 +601,27 @@ def load_data():
         .drop(columns=["SentimentScore"], errors="ignore")
         .merge(feedback_score, on="customerID", how="left", validate="one_to_one")
     )
-    # --- fim do FIX 2 ---
 
-        # --- fim do FIX 2 ---
-
-    # --- FIX 2b: SentimentScore também no intelligence ---
+    # === FIX 2b: SentimentScore também no intelligence ===
     intelligence = (
         intelligence
         .drop(columns=["SentimentScore"], errors="ignore")
         .merge(feedback_score, on="customerID", how="left", validate="one_to_one")
     )
-    # --- fim do FIX 2b ---
 
-    for df in [scores, intelligence, aspects, feedback]:
-        df["customerID"] = df["customerID"].astype(str).str.strip()
-
-    for df in [scores, intelligence, aspects, feedback]:
-        df["customerID"] = df["customerID"].astype(str).str.strip()
+    # === FIX 3: intelligence também usa o modelo NOVO (ChurnScore/ChurnPredicted) ===
+    intelligence = (
+        intelligence
+        .drop(columns=["ChurnScore", "ChurnPredicted"], errors="ignore")
+        .merge(
+            scores[["customerID", "ChurnScore_", "ChurnPredicted__", "LucroEsperado", "Ligar"]],
+            on="customerID", how="left", validate="one_to_one"
+        )
+        .rename(columns={
+            "ChurnScore_":      "ChurnScore",
+            "ChurnPredicted__": "ChurnPredicted",
+        })
+    )
 
     return scores, intelligence, aspects, feedback
 
@@ -690,11 +683,12 @@ def safe_number(value):
     except (ValueError, TypeError):
         return 0.0
 
-def render_metric_card(label, value, bg_color="#1B3139", text_color="#EEEDE9", label_color="#A0B4BC", accent_color=None):
+def render_metric_card(label, value, bg_color="#1B3139", text_color="#EEEDE9", label_color="#A0B4BC", accent_color=None, small=False):
     accent = f"border-left: 4px solid {accent_color};" if accent_color else ""
+    extra = " terra-metric-card-sm" if small else ""
     st.html(
         f"""
-        <div class="terra-metric-card" style="background: {bg_color}; {accent}">
+        <div class="terra-metric-card{extra}" style="background: {bg_color}; {accent}">
             <div class="terra-metric-label" style="color: {label_color};">{label}</div>
             <div class="terra-metric-value" style="color: {text_color};">{value}</div>
         </div>
@@ -852,10 +846,12 @@ def detect_satisfaction(feedback_text):
     ]
     return any(p in t for p in satisfaction_phrases)
 
-def generate_guidance(prediction, customer_aspects, sentiment, feedback_text=""):
-    """Gera guidance considerando aspectos, sentimento, previsão E sinal de saída no texto."""
+def generate_guidance(prediction, customer_aspects, sentiment, feedback_text="",
+                      lucro_esperado=0, ligar="—"):
+    """Gera guidance considerando aspectos, sentimento, previsão, sinal de saída
+    E o modelo logístico novo (LucroEsperado + Ligar)."""
 
-    # Sinal 1 — menções negativas nos aspectos
+    # === Sinal 1 — menções negativas nos aspectos ===
     if "Qtd_Negativas" in customer_aspects.columns:
         negative_mentions = pd.to_numeric(
             customer_aspects["Qtd_Negativas"], errors="coerce"
@@ -863,14 +859,18 @@ def generate_guidance(prediction, customer_aspects, sentiment, feedback_text="")
     else:
         negative_mentions = 0
 
-    # Sinal 2 — sentimento
+    # === Sinal 2 — sentimento ===
     sentiment_lower = str(sentiment).strip().lower()
     sentiment_negative = sentiment_lower in ("negativo", "negative")
-
     has_negativity = (negative_mentions > 0) or sentiment_negative
 
-    # Sinal 3 — feedback menciona que o cliente já saiu
+    # === Sinal 3 — feedback menciona que o cliente já saiu ===
     already_churned = detect_churn_language(feedback_text)
+
+    # === Sinal 4 — modelo logístico novo ===
+    ligar_bool = str(ligar).strip().lower() in ("sim", "yes", "true", "1")
+    lucro_positivo = lucro_esperado > 0
+    lucro_fmt = f"R$ {lucro_esperado:+.2f}"
 
     # Aspectos relevantes
     attention_aspects = []
@@ -896,71 +896,89 @@ def generate_guidance(prediction, customer_aspects, sentiment, feedback_text="")
         _prep_a = "aos "
         _prep_plain = "os "
 
-    # ---- CASO ESPECIAL: feedback indica que o cliente já saiu ----
+    # === CASO ESPECIAL: feedback indica que o cliente já saiu ===
     if already_churned:
         if has_negativity:
             return (
                 "⚠️ VERIFICAR STATUS — POSSÍVEL EX-CLIENTE",
                 f"O feedback indica que o cliente saiu em algum momento, "
-                f"mas o dado pode estar desatualizado (o cliente pode ter retornado). "
+                f"mas o dado pode estar desatualizado. Retorno esperado: {lucro_fmt}. "
                 f"Há sinais negativos, especialmente {_prep_em}{_aspects}.",
                 f"1️⃣ ANTES DE AGIR: consulte o CRM para confirmar o status atual.\n"
-                f"2️⃣ SE ATIVO: contato de retenção — investigue {_prep_plain}{_aspects} "
-                f"e apresente alternativas de solução.\n"
-                f"3️⃣ SE INATIVO: campanha de win-back — analise {_prep_plain}{_aspects} "
-                f"e ofereça proposta direcionada de reativação.",
+                f"2️⃣ SE ATIVO: contato de retenção — investigue {_prep_plain}{_aspects}.\n"
+                f"3️⃣ SE INATIVO: campanha de win-back.",
                 "warning"
             )
         else:
             return (
                 "⚠️ VERIFICAR STATUS — POSSÍVEL EX-CLIENTE",
-                "O feedback indica que o cliente saiu em algum momento, "
-                "mas o dado pode estar desatualizado. Sem sinais negativos claros no texto.",
-                "1️⃣ ANTES DE AGIR: consulte o CRM para confirmar o status atual.\n"
-                "2️⃣ SE ATIVO: mantenha o relacionamento e confirme a satisfação.\n"
-                "3️⃣ SE INATIVO: considere oferta de win-back — a saída pode ter sido "
-                "por motivo externo (preço, mudança).",
+                f"O feedback indica que o cliente saiu em algum momento. "
+                f"Retorno esperado: {lucro_fmt}. Sem sinais negativos claros.",
+                f"1️⃣ ANTES DE AGIR: consulte o CRM para confirmar o status atual.\n"
+                f"2️⃣ SE ATIVO: mantenha o relacionamento.\n"
+                f"3️⃣ SE INATIVO: considere oferta de win-back.",
                 "warning"
             )
 
-    # ---- CLIENTE ATIVO (fluxo normal) ----
-    if prediction == "Yes" and has_negativity:
+    # === NOVO: caso crítico — churn ALTO + retorno POSITIVO (prioridade máxima) ===
+    if prediction == "Yes" and ligar_bool and lucro_positivo:
         return (
-            "PRIORIDADE ALTA",
-            f"Existe previsão de churn e há sinais negativos no feedback, "
-            f"especialmente {_prep_em}{_aspects}.",
-            f"Priorize um contato proativo: investigue os problemas relacionados "
-            f"{_prep_a}{_aspects}, apresente alternativas de solução e combine um "
-            f"acompanhamento.",
+            "🔴 PRIORIDADE MÁXIMA — LIGAR",
+            f"Cliente em risco de churn COM retorno esperado positivo ({lucro_fmt}). "
+            f"{'Há sinais negativos, especialmente ' + _prep_em + _aspects if has_negativity else 'Sem sinais negativos claros.'}",
+            f"Contato IMEDIATO: cliente de alto valor em risco. "
+            f"Investigue {_prep_a}{_aspects} e apresente proposta de retenção.",
             "alert"
         )
 
-    elif prediction == "Yes":
+    # === NOVO: ligar mas retorno baixo/negativo ===
+    if ligar_bool and not lucro_positivo:
         return (
-            "CONTATO PREVENTIVO",
-            "Existe previsão de churn, mas não foram identificados sinais negativos claros.",
-            "Entre em contato para confirmar a satisfação, compreender possíveis "
-            "riscos e reforçar os benefícios do serviço.",
+            "🟡 LIGAR — RETENÇÃO CAUTELOSA",
+            f"Retorno esperado baixo/negativo ({lucro_fmt}), mas modelo recomenda contato. "
+            f"{'Há sinais negativos, especialmente ' + _prep_em + _aspects if has_negativity else 'Sem sinais negativos claros.'}",
+            f"Avalie custo-benefício do contato. Se ligar, investigue {_prep_a}{_aspects}.",
             "warning"
         )
 
-    elif has_negativity:
-        return (
-            "ACOMPANHAMENTO",
-            f"Não há previsão de churn, mas há sinais negativos no feedback, "
-            f"especialmente {_prep_em}{_aspects}.",
-            f"Investigue os pontos de insatisfação, especialmente {_prep_plain}{_aspects}, "
-            f"e acompanhe sua resolução.",
-            "warning"
-        )
+    # === NOVO: NÃO ligar + retorno negativo (economia de esforço) ===
+    if not ligar_bool and not lucro_positivo:
+        if has_negativity:
+            return (
+                "⚪ NÃO PRIORIZAR — RETORNO NEGATIVO",
+                f"Retorno esperado negativo ({lucro_fmt}). "
+                f"Há sinais negativos, especialmente {_prep_em}{_aspects}.",
+                f"Cliente com baixo retorno — não priorizar retenção ativa. "
+                f"Se houver tempo, investigue {_prep_plain}{_aspects}.",
+                "neutral"
+            )
+        else:
+            return (
+                "⚪ MANUTENÇÃO — SEM AÇÃO PRIORITÁRIA",
+                f"Sem churn previsto e retorno esperado negativo ({lucro_fmt}). "
+                f"Cliente estável mas não prioritário.",
+                "Manter acompanhamento regular. Sem ação de retenção necessária.",
+                "neutral"
+            )
 
-    else:
+    # === NOVO: NÃO ligar mas retorno positivo (oportunidade) ===
+    if not ligar_bool and lucro_positivo:
         return (
-            "MANUTENÇÃO DO RELACIONAMENTO",
-            "Não há previsão de churn e não foram identificados sinais negativos.",
-            "Mantenha o acompanhamento regular e reforce os aspectos positivos da experiência.",
+            "🟢 OPORTUNIDADE — MONITORAR",
+            f"Sem churn previsto e retorno esperado positivo ({lucro_fmt}). "
+            f"Cliente estável e valioso.",
+            f"Mantenha o relacionamento e reforce os benefícios do serviço. "
+            f"Sem ação de retenção necessária.",
             "neutral"
         )
+
+    # === Fallback: lógica antiga (nunca deve chegar aqui) ===
+    return (
+        "MANUTENÇÃO DO RELACIONAMENTO",
+        "Não há previsão de churn e não foram identificados sinais negativos.",
+        "Mantenha o acompanhamento regular e reforce os aspectos positivos.",
+        "neutral"
+    )
 
 # --------------------------------------------------
 # 6. Cabeçalho
@@ -979,24 +997,22 @@ with header_left:
 with header_center:
     order_by = st.radio(
         "Ordenar por",
-        ["Prioridade de churn", "Ordem alfabética"],
+        ["Prioridade de churn", "Retorno esperado", "Ordem alfabética"],
         horizontal=True,
         label_visibility="collapsed"
     )
 
     scores_sorted = (
-        scores[["customerID", "ChurnScore"]]
+        scores[["customerID", "ChurnScore", "LucroEsperado"]]   
         .dropna(subset=["customerID"])
     )
 
     if order_by == "Prioridade de churn":
-        scores_sorted = scores_sorted.sort_values(
-            "ChurnScore", ascending=False
-        )
+        scores_sorted = scores_sorted.sort_values("ChurnScore", ascending=False)
+    elif order_by == "Retorno esperado":
+        scores_sorted = scores_sorted.sort_values("LucroEsperado", ascending=False)
     else:
-        scores_sorted = scores_sorted.sort_values(
-            "customerID", ascending=True
-        )
+        scores_sorted = scores_sorted.sort_values("customerID", ascending=True)
 
     customer_ids = scores_sorted["customerID"].tolist()
 
@@ -1187,6 +1203,53 @@ else:
 
     with right:
 
+        # === Lucro Esperado + Ação (modelo logístico novo) ===
+        lucro_valor = safe_number(get_value(score_row, "LucroEsperado", 0))
+        acao_valor = get_value(score_row, "Ligar", "—")
+
+        st.subheader("💰 Impacto financeiro e ação")
+
+        lcol1, lcol2 = st.columns(2)
+
+        with lcol1:
+            if lucro_valor >= 0:
+                bg_l = "rgba(34, 197, 94, 0.15)"
+                txt_l = "#22C55E"
+                label_l = "rgba(34, 197, 94, 0.7)"
+            else:
+                bg_l = "rgba(249, 115, 22, 0.15)"
+                txt_l = "#F97316"
+                label_l = "rgba(249, 115, 22, 0.7)"
+            render_metric_card(
+                "Lucro esperado (12m)",
+                f"R$ {lucro_valor:+.2f}",
+                bg_color=bg_l,
+                text_color=txt_l,
+                label_color=label_l,
+                small=True
+            )
+
+        with lcol2:
+            if str(acao_valor).strip().lower() in ("sim", "yes", "true", "1"):
+                bg_a = "rgba(239, 68, 68, 0.15)"
+                txt_a = "#EF4444"
+                label_a = "rgba(239, 68, 68, 0.7)"
+                texto_a = "📞 Ligar"
+            else:
+                bg_a = "rgba(148, 163, 184, 0.15)"
+                txt_a = "#94A3B8"
+                label_a = "rgba(148, 163, 184, 0.7)"
+                texto_a = "Não ligar"
+            render_metric_card(
+                "Ação recomendada",
+                texto_a,
+                bg_color=bg_a,
+                text_color=txt_a,
+                label_color=label_a,
+                small=True
+            )
+        # === fim do bloco ===
+
         # Sentimento do cliente
         with st.container(border=True):
 
@@ -1227,8 +1290,6 @@ else:
             else:
                 sentiment_emoji = "🤍"
 
-            st.subheader(f"{sentiment_emoji} Sentimento do cliente")
-
             # Cor por sentimento
             if sentiment_raw in ("positive", "positivo"):
                 sentiment_bg = "rgba(34, 197, 94, 0.15)"
@@ -1243,28 +1304,34 @@ else:
                 sentiment_text = "#EEEDE9"
                 sentiment_label_color = "#A0B4BC"
 
-            sentiment_col1, sentiment_col2 = st.columns(2)
+            # Título à esquerda + box à direita (alinhados no meio)
+            try:
+                title_col, card_col = st.columns([1, 1], vertical_alignment="center")
+            except TypeError:
+                title_col, card_col = st.columns([1, 1])
 
-            with sentiment_col1:
+            with title_col:
+                st.markdown(
+                    f"<div style='text-align: center; "
+                    f"font-size: 1.3rem; "                    # ← maior (era 1.1)
+                    f"font-weight: 600; "
+                    f"line-height: 1.2; "
+                    f"min-height: 70px; "                       # ← mesma altura do box
+                    f"display: flex; flex-direction: column; "
+                    f"align-items: center; justify-content: center;'>"  # ← centraliza de verdade
+                    f"{sentiment_emoji} Sentimento<br>do cliente"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+
+            with card_col:
                 render_metric_card(
-                    "Sentimento consolidado",
+                    "",
                     format_sentiment(sentiment),
                     bg_color=sentiment_bg,
                     text_color=sentiment_text,
-                    label_color=sentiment_label_color
-                )
-
-            with sentiment_col2:
-                score_value = (
-                    f"{safe_number(sentiment_score):+.2f}"
-                    if sentiment_score != "Não disponível"
-                    else "Não disponível"
-                )
-                render_metric_card(
-                    "Sentiment Score",
-                    score_value,
-                    text_color=sentiment_text,
-                    label_color=sentiment_label_color
+                    label_color=sentiment_label_color,
+                    small=True
                 )
 
         # Feedback completo
@@ -1291,11 +1358,16 @@ else:
         if _fb == "Não disponível" and feedback_row is not None:
             _fb = get_value(feedback_row, "Feedback_Limpo")
 
+        _lucro_guidance = safe_number(get_value(score_row, "LucroEsperado", 0))
+        _ligar_guidance = get_value(score_row, "Ligar", "—")
+
         guidance_title, guidance_condition, guidance_action, guidance_level = generate_guidance(
             prediction,
             customer_aspects,
             sentiment,
-            feedback_text=_fb if _fb != "Não disponível" else ""
+            feedback_text=_fb if _fb != "Não disponível" else "",
+            lucro_esperado=_lucro_guidance,
+            ligar=_ligar_guidance
         )
 
         guidance_col, actions_col = st.columns([4, 1], gap="medium")
@@ -1305,6 +1377,9 @@ else:
 
             st.subheader("💡 Orientação de atendimento")
 
+            _cond_html = str(guidance_condition).replace("\n", "<br>")
+            _action_html = str(guidance_action).replace("\n", "<br>")
+
             st.html(
                 f"""
                 <div class="guidance guidance-{guidance_level}">
@@ -1312,12 +1387,12 @@ else:
 
                     <div class="guidance-row">
                         <span class="guidance-label">Condição</span>
-                        <span class="guidance-body">{guidance_condition}</span>
+                        <span class="guidance-body">{_cond_html}</span>
                     </div>
 
                     <div class="guidance-row">
                         <span class="guidance-label">Ação sugerida</span>
-                        <span class="guidance-body">{guidance_action}</span>
+                        <span class="guidance-body">{_action_html}</span>
                     </div>
                 </div>
                 """
@@ -1327,6 +1402,54 @@ else:
         with actions_col:
 
             st.subheader("Ações")
+
+            # === Dinheiro + Ação recomendada (modelo logístico) ===
+            lucro_valor = safe_number(get_value(score_row, "LucroEsperado", 0))
+            acao_valor = get_value(score_row, "Ligar", "—")
+
+            if lucro_valor >= 0:
+                dinheiro_cor = "#22C55E"
+                dinheiro_texto = f"R$ {lucro_valor:+.2f}"
+                dinheiro_emoji = "💰"
+            else:
+                dinheiro_cor = "#F97316"
+                dinheiro_texto = f"R$ {lucro_valor:+.2f}"
+                dinheiro_emoji = "⚠️"
+
+            if str(acao_valor).strip().lower() in ("sim", "yes", "true", "1"):
+                acao_texto = "📞 Ligar"
+                acao_cor = "#EF4444"
+            else:
+                acao_texto = "Não ligar"
+                acao_cor = "#94A3B8"
+
+            st.html(
+                f"""
+                <div style="padding: 10px 14px;
+                            background: rgba(27, 49, 57, 0.7);
+                            border-radius: 8px;
+                            margin-bottom: 0.75rem;">
+                    <div style="color: {dinheiro_cor}; font-weight: 600;
+                                font-size: 0.9rem; margin-bottom: 4px;">
+                        {dinheiro_emoji} {dinheiro_texto}
+                    </div>
+                    <div style="color: {acao_cor}; font-weight: 700;
+                                font-size: 0.95rem;">
+                        {acao_texto}
+                    </div>
+                </div>
+                """
+            )
+            # === fim do bloco dinheiro ===
+
+            # === Comunicação (compacta, alinhada à esquerda) ===
+            st.markdown(
+                '<div style="margin-top: 0.5rem; margin-bottom: 4px; '
+                'font-size: 0.75rem; color: #A0B4BC; '
+                'text-transform: uppercase; letter-spacing: 0.5px;">'
+                'Comunicação</div>',
+                unsafe_allow_html=True
+            )
 
             # WhatsApp
             phone = get_value(info_row, "Phone")
@@ -1340,15 +1463,10 @@ else:
             )
 
             wa_icon = get_whatsapp_icon_base64()
-
-            # Carrega PNG do WhatsApp; se falhar, usa emoji como fallback
-            wa_icon = get_whatsapp_icon_base64()
-            use_logo = bool(wa_icon)
-
-            if use_logo:
+            if wa_icon:
                 wa_html = (
                     f'<img src="data:image/png;base64,{wa_icon}" '
-                    f'style="width:18px;height:18px;vertical-align:middle;'
+                    f'style="width:16px;height:16px;vertical-align:middle;'
                     f'margin-right:6px;border:0;" />'
                 )
             else:
@@ -1360,23 +1478,23 @@ else:
                     .replace("(", "").replace(")", "").replace("+", "")
                 )
                 st.markdown(
-                    f'<a href="https://wa.me/{phone_clean}" target="_blank" class="wa-btn" '
+                    f'<a href="https://wa.me/{phone_clean}" target="_blank" '
                     f'style="display:inline-flex;align-items:center;'
-                    f'padding:0.45rem 1rem;background:#1B3139;'
+                    f'padding:6px 14px;background:#1B3139;'
                     f'border:1px solid #2A4655;border-radius:8px;'
-                    f'color:#EEEDE9;text-decoration:none;font-size:0.9rem;'
-                    f'font-family:inherit;margin:0.25rem 0;width:fit-content;">'
+                    f'color:#EEEDE9;text-decoration:none;font-size:0.85rem;'
+                    f'font-family:inherit;margin:0 0 4px 0;width:fit-content;">'
                     f'{wa_html}WhatsApp</a>',
                     unsafe_allow_html=True
                 )
             else:
                 st.markdown(
-                    f'<a href="#" class="wa-btn" '
+                    f'<a href="#" onclick="return false;" '
                     f'style="display:inline-flex;align-items:center;'
-                    f'padding:0.45rem 1rem;background:#1B3139;'
+                    f'padding:6px 14px;background:#1B3139;'
                     f'border:1px solid #2A4655;border-radius:8px;'
-                    f'color:#EEEDE9;text-decoration:none;font-size:0.9rem;'
-                    f'font-family:inherit;margin:0.25rem 0;width:fit-content;">'
+                    f'color:#EEEDE9;text-decoration:none;font-size:0.85rem;'
+                    f'font-family:inherit;margin:0 0 4px 0;width:fit-content;opacity:0.6;">'
                     f'{wa_html}WhatsApp</a>',
                     unsafe_allow_html=True
                 )
@@ -1389,14 +1507,32 @@ else:
             is_real_email = email != "Não disponível" and "@" in str(email)
 
             if is_real_email:
-                st.link_button("✉️ Email", f"mailto:{email}")
+                st.markdown(
+                    f'<a href="mailto:{email}" '
+                    f'style="display:inline-flex;align-items:center;'
+                    f'padding:6px 14px;background:#1B3139;'
+                    f'border:1px solid #2A4655;border-radius:8px;'
+                    f'color:#EEEDE9;text-decoration:none;font-size:0.85rem;'
+                    f'font-family:inherit;margin:0 0 4px 0;width:fit-content;">'
+                    f'✉️ Email</a>',
+                    unsafe_allow_html=True
+                )
             else:
-                if st.button("✉️ Email", key="btn_email"):
-                    st.toast("Email não disponível nos dados", icon="ℹ️")
+                st.markdown(
+                    '<a href="#" onclick="return false;" '
+                    'style="display:inline-flex;align-items:center;'
+                    'padding:6px 14px;background:#1B3139;'
+                    'border:1px solid #2A4655;border-radius:8px;'
+                    'color:#EEEDE9;text-decoration:none;font-size:0.85rem;'
+                    'font-family:inherit;margin:0 0 4px 0;width:fit-content;opacity:0.6;">'
+                    '✉️ Email</a>',
+                    unsafe_allow_html=True
+                )
 
-            # Aplicar plano (visual por enquanto)
-            if st.button("🎯 Aplicar plano", key="btn_plan"):
+            # Aplicar plano
+            if st.button("🎯 Aplicar plano", key="btn_plan", use_container_width=False):
                 st.toast("Plano de retenção aplicado (simulado)", icon="✅")
+            # === fim do bloco comunicação ===
 
         st.caption(
             "Orientação baseada em previsão de churn, sentimento, aspectos e sinais no feedback. "
