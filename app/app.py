@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 import base64
+import numpy as np
 
 # --------------------------------------------------
 # 1. Configuração
@@ -522,42 +523,114 @@ st.markdown("""
 # --------------------------------------------------
 # 3. Carregamento dos dados
 # --------------------------------------------------
-
 @st.cache_data
 def load_data():
 
     scores = pd.read_csv(
         DATA_DIR / "terra_signal_churn_scores.csv",
-        sep=",",
-        decimal=".",
-        encoding="utf-8-sig"
+        sep=";",
+        encoding="utf-8-sig",     # ← SEM decimal=","
     )
-
     intelligence = pd.read_csv(
         DATA_DIR / "terra_signal_customer_intelligence.csv",
         sep=";",
         decimal=",",
-        encoding="utf-8-sig"
+        encoding="latin-1",
     )
-
     aspects = pd.read_csv(
         DATA_DIR / "terra_signal_feedback_aspects.csv",
         sep=";",
-        encoding="utf-8-sig"
+        encoding="latin-1",
     )
-
     feedback = pd.read_csv(
         DATA_DIR / "terra_signal_feedback_text.csv",
         sep=";",
         decimal=",",
-        encoding="utf-8-sig"
+        encoding="latin-1",
     )
+
+    def _limpar_bom(df, nome_arquivo):
+        novos = {col: str(col).replace("\ufeff","").replace("ï»¿","").strip()
+                 for col in df.columns}
+        df = df.rename(columns=novos)
+        if "customerID" not in df.columns:
+            for c in df.columns:
+                if c.strip().lower() == "customerid":
+                    df = df.rename(columns={c: "customerID"})
+                    break
+        if "customerID" not in df.columns:
+            raise ValueError(
+                f"Coluna 'customerID' não encontrada em {nome_arquivo}. "
+                f"Colunas: {list(df.columns)}"
+            )
+        return df
+
+    scores       = _limpar_bom(scores,       "terra_signal_churn_scores.csv")
+    intelligence = _limpar_bom(intelligence, "terra_signal_customer_intelligence.csv")
+    aspects      = _limpar_bom(aspects,      "terra_signal_feedback_aspects.csv")
+    feedback     = _limpar_bom(feedback,     "terra_signal_feedback_text.csv")
+
+    def _to_float_br(series):
+        s = series.astype(str).str.strip()
+        sample = s.dropna().head(100).tolist()
+        has_comma = sum("," in x for x in sample) > (len(sample) / 2)
+        if has_comma:
+            s = s.str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
+        else:
+            s = s.str.replace(",", "", regex=False)
+        return pd.to_numeric(s, errors="coerce").astype(float)
+
+    scores["ChurnScore_"] = _to_float_br(scores["ChurnScore_"])
+    scores["Threshold"]   = _to_float_br(scores["Threshold"])
+
+    scores["ChurnPredicted__"] = np.where(
+        scores["ChurnScore_"] > scores["Threshold"], "Yes", "No"
+    )
+
+    # --- aliases DEPOIS do fix (pra ficarem consistentes) ---
+    scores["ChurnScore"]     = scores["ChurnScore_"]
+    scores["ChurnPredicted"] = scores["ChurnPredicted__"]
+
+    # --- FIX 2: SentimentScore correto vindo do feedback.csv ---
+    feedback["SentimentScore"] = pd.to_numeric(
+        feedback["SentimentScore"].astype(str).str.strip().str.replace(",", ".", regex=False),
+        errors="coerce",
+    )
+    feedback["customerID"] = feedback["customerID"].astype(str).str.strip()
+    scores["customerID"]   = scores["customerID"].astype(str).str.strip()
+
+    feedback_score = (
+        feedback
+        .dropna(subset=["customerID"])
+        .query("customerID != ''")
+        .groupby("customerID", as_index=False)["SentimentScore"]
+        .mean()
+    )
+
+    scores = (
+        scores
+        .drop(columns=["SentimentScore"], errors="ignore")
+        .merge(feedback_score, on="customerID", how="left", validate="one_to_one")
+    )
+    # --- fim do FIX 2 ---
+
+        # --- fim do FIX 2 ---
+
+    # --- FIX 2b: SentimentScore também no intelligence ---
+    intelligence = (
+        intelligence
+        .drop(columns=["SentimentScore"], errors="ignore")
+        .merge(feedback_score, on="customerID", how="left", validate="one_to_one")
+    )
+    # --- fim do FIX 2b ---
+
+    for df in [scores, intelligence, aspects, feedback]:
+        df["customerID"] = df["customerID"].astype(str).str.strip()
 
     for df in [scores, intelligence, aspects, feedback]:
         df["customerID"] = df["customerID"].astype(str).str.strip()
 
     return scores, intelligence, aspects, feedback
-
 
 scores, intelligence, aspects, feedback = load_data()
 
